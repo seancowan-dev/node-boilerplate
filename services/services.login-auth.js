@@ -1,5 +1,6 @@
 const bcrypt = require('bcryptjs')
 const jwt = require('jsonwebtoken')
+const config = require('../src/config');
 
 const LoginAuthService = {
   getUserWithUserName(db, name) {
@@ -13,6 +14,7 @@ const LoginAuthService = {
   createJwt(subject, payload) {
     return jwt.sign(payload, process.env.API_CLIENT_SECRET, {
       subject,
+      expiresIn: config.JWT_EXPIRY,
       algorithm: 'HS256',
     })
   },

@@ -188,4 +188,16 @@ usersRouter
       .catch(next)
     });
 
+    usersRouter
+    .route('/refresh')
+    .all(requireAPIKey)
+    .all(requireAuth)
+    .post((req, res) => {
+        const sub = req.user.name
+        const payload = { user_id: req.user.id }
+        res.send({
+          authToken: LoginAuthService.createJwt(sub, payload),
+        })
+    });
+
     module.exports = usersRouter
