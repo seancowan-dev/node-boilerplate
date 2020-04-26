@@ -6,5 +6,6 @@ CREATE TABLE IF NOT EXISTS
         password VARCHAR(128) NOT NULL,
         created_at TIMESTAMPTZ NOT NULL,
         updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        perm_level VARCHAR(128) NOT NULL,
         PRIMARY KEY(id)
       )

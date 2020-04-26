@@ -14,7 +14,8 @@ const serial = user => ({
     password: xss(user.password),
     email: xss(user.email),
     created_at: xss(user.created_at),
-    modified_at: xss(user.updated_at)
+    modified_at: xss(user.updated_at),
+    perm_level: xss(user.perm_level)
 })
 
 usersRouter
@@ -35,8 +36,9 @@ usersRouter
     .route('/add')
     .all(requireAPIKey)
     .post(bodyParser, (req, res, next) => {  // Add a new user
+        const perm_level = "user";
         const { name, password, email, created_at } = req.body;
-        const newUser = { name, password, email, created_at };
+        const newUser = { name, password, email, created_at, perm_level };
 
         for (const [key, value] of Object.entries(newUser))  // Make sure all info is provided
             if (value === null) 
@@ -80,6 +82,11 @@ usersRouter
     .all(requireAPIKey)
     .all(requireAuth)
     .all((req, res, next) => {
+        if (req.user.perm_level !== "admin") {
+            return res.status(404).json({
+                error: { message: `You must be an admin in order to delete users. Your level is '${req.user.perm_level}'`}
+            })
+        }
         UsersService.getUserById(
             req.app.get('db'),
             req.params.id
@@ -127,25 +134,32 @@ usersRouter
     .patch(bodyParser, (req, res, next) => {
         const { name, password, email } = req.body;
         const updateUser = { name, password, email };
-
-        const numOfVals = Object.values(updateUser).filter(Boolean).length;  // Make sure request had all info
-        if(numOfVals === 0) {
+        if (req.user.perm_level === "admin" || updateUser.name === req.user.name) {
+            const numOfVals = Object.values(updateUser).filter(Boolean).length;  // Make sure request had all info
+            if(numOfVals === 0) {
+                return res.status(400).json({
+                    error: {
+                        message: `Missing user credentials, all user info should be passed to api.`
+                    }
+                })
+            }
+            UsersService.updateUser(
+                req.app.get('db'),
+                req.params.id,
+                updateUser
+            )
+            .then(rows => {
+                res.status(204).end()
+            })
+            .catch(next);
+        } else {
             return res.status(400).json({
                 error: {
-                    message: `Missing user credentials, all user info should be passed to api.`
+                    message: `You must either be the owner of this account or an admin to change its settings.`
                 }
-            })
+            })            
         }
-        UsersService.updateUser(
-            req.app.get('db'),
-            req.params.id,
-            updateUser
-        )
-        .then(rows => {
-            res.json(res.user);
-            res.status(204).end()
-        })
-        .catch(next)
+
     });
 
 usersRouter
@@ -168,14 +182,14 @@ usersRouter
       .then(dbUser => {
         if (!dbUser)
           return res.status(400).json({
-            error: 'Incorrect name or password',
+            error: 'Incorrect user name has been entered.',
           })
 
         return LoginAuthService.comparePasswords(loginUser.password, dbUser.password)
           .then(compareMatch => {
             if (!compareMatch)
               return res.status(400).json({
-                error: 'Incorrect name or password',
+                error: 'Incorrect password has been entered.',
               })
 
             const sub = dbUser.name
