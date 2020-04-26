@@ -48,4 +48,24 @@ listsRouter
         .catch(next)
     });
 
+listsRouter
+    .route('/getList/:id')
+    .all(requireAPIKey)
+    .all(requireAuth)
+    .get((req, res, next)=> {
+        const knex = req.app.get('db')
+        if (req.user.perm_level === "admin" || req.params.id === req.user.id) {
+            ListsService.getUserListsById(knex, req.params.id)
+            .then(list => {
+                res.json(list.map(serialJoin))
+            })
+            .catch(next)
+        } else {
+            return res.status(400).json({
+                error: {
+                    message: `You must either be the owner of this account or an admin to view its lists.`
+                }
+            })            
+        }
+    })
     module.exports = listsRouter
