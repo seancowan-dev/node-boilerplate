@@ -67,5 +67,39 @@ listsRouter
                 }
             })            
         }
-    })
+    });
+
+listsRouter
+.route('/add')
+    .all(requireAPIKey)
+    .all(requireAuth)
+    .post(bodyParser, (req, res, next) => {  // Add a new user
+        const { list_name, user_id } = req.body;
+        const newList = { list_name, user_id };
+
+        if (newList.user_id !== req.user.id) {
+            return res.status(400).json({
+                error: {
+                    message: `You must either be the owner of this account to add lists to it.`
+                }
+            })                  
+        }
+
+        for (const [key, value] of Object.entries(newList))  // Make sure all info is provided
+            if (value === null) 
+            return res.status(400).json({
+                error: {message: `Missing '${key}' in request body.  Valid posts must contain, id, name, modified, and folderID`}
+            })
+
+        ListsService.addList(  // Insert the information
+            req.app.get('db'),
+            newList
+        )
+        .then(list => {  
+            res.status(201)
+            .location(path.posix.join(req.originalUrl, `/${list.id}`))
+            .json(serialList(list))
+        })
+        .catch(next)
+    });
     module.exports = listsRouter
