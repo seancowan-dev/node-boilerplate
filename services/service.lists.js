@@ -30,10 +30,10 @@ const ListsService = {
         return knex('list_items').where({ id }).delete();
     },
     updateUserList(knex, id, newList) {
-        return knex('user_lists').where({ id }).update(newUser);
+        return knex('user_lists').where({ id }).update(newList);
     },
-    updateListItems(knex, list_id, newItem) {
-        return knex('list_items').where({ list_id }).update(newItem);
+    updateListItems(knex, id, newItem) {
+        return knex('list_items').where({ id }).update(newItem);
     },
 }
 

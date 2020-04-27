@@ -105,12 +105,11 @@ listsRouter
     .route('/addItem')
         .all(requireAPIKey)
         .all(requireAuth)
-        .post(bodyParser, (req, res, next) => {  // Add a new user
+        .all(bodyParser, (req, res, next) => {  // Add a new user
             const user_id = req.user.id;
             ListsService.getUserListsById(req.app.get('db'), user_id)
             .then(list => {
-                const list_items = list.map(serialList(list));
-
+                const list_items = list.map(serialJoin);
                 for (const [key, value] of Object.entries(list_items)) {
                     if (key === "user_id") {
                         if (value !== user_id) {
@@ -125,7 +124,8 @@ listsRouter
                 next();
             })
             .catch(next);
-
+        })
+        .post(bodyParser, (req, res, next) => {
             const { title, date_added, list_id } = req.body;
             const newItem = { title, date_added, list_id };
     
@@ -212,5 +212,88 @@ listsRouter
                 })
                 .catch(next);
             });
+
+            listsRouter
+            .route('/updateList/:id')
+                .all(requireAPIKey)
+                .all(requireAuth)
+                .patch(bodyParser, (req, res, next) => {  // Add a new user
+                    const { list_name, user_id } = req.body;
+                    const id = req.params.id;
+                    const list = { id, list_name, user_id };
+            
+                    if (list.user_id !== req.user.id) {
+                        return res.status(400).json({
+                            error: {
+                                message: `You must be the owner of this account to update its lists.`
+                            }
+                        })                  
+                    }
+            
+                    for (const [key, value] of Object.entries(list))  // Make sure all info is provided
+                        if (value === null) 
+                        return res.status(400).json({
+                            error: {message: `Missing '${key}' in request body.  Valid updates must contain a list id, list_name and user_id.`}
+                        })
+            
+                    ListsService.updateUserList(  // Insert the information
+                        req.app.get('db'), id,
+                        list
+                    )
+                    .then(list => {  
+                        res.status(201)
+                        .location(path.posix.join(req.originalUrl, `/${list.id}`))
+                        .json({message: "Successfully updated the list"})
+                    })
+                    .catch(next)
+                });
+            
+                listsRouter
+                .route('/updateItem/:id')
+                    .all(requireAPIKey)
+                    .all(requireAuth)
+                    .all((req, res, next) => {  // Add a new user
+                        const user_id = req.user.id;
+                        ListsService.getUserListsById(req.app.get('db'), user_id)
+                        .then(items => {
+                            const entries = items.map(serialJoin);
+            
+                            for (const [key, value] of Object.entries(entries)) {
+                                if (key === "user_id") {
+                                    if (value !== user_id) {
+                                        return res.status(400).json({
+                                            error: {
+                                                message: `You must be the owner of this account to add update its list items.`
+                                            }
+                                        })   
+                                    }
+                                }
+                            }
+                            next();
+                        })
+                        .catch(next);
+                    })
+                    .patch(bodyParser, (req, res, next) => { 
+                        const { title, date_added, list_id } = req.body;
+                        const updateItem = { title, date_added, list_id };
+
+                        for (const [key, value] of Object.entries(updateItem))  // Make sure all info is provided
+                            if (value === null) 
+                            return res.status(400).json({
+                                error: {message: `Missing '${key}' in request body.  Valid list item updates must contain a title, date_added and existing list_id.`}
+                            })
+                
+                        ListsService.updateListItems(  // Insert the information
+                            req.app.get('db'),
+                            req.params.id,
+                            updateItem
+                        )
+                        .then(item => {  
+                            res.status(201)
+                            .location(path.posix.join(req.originalUrl, `/${req.params.id}`))
+                            .json(serialItem(item))
+                        })
+                        .catch(next)
+                    });
 
     module.exports = listsRouter
