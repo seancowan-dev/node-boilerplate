@@ -80,7 +80,7 @@ listsRouter
         if (newList.user_id !== req.user.id) {
             return res.status(400).json({
                 error: {
-                    message: `You must either be the owner of this account to add lists to it.`
+                    message: `You must be the owner of this account to add lists to it.`
                 }
             })                  
         }
@@ -102,4 +102,50 @@ listsRouter
         })
         .catch(next)
     });
+
+    listsRouter
+    .route('/addItem')
+        .all(requireAPIKey)
+        .all(requireAuth)
+        .post(bodyParser, (req, res, next) => {  // Add a new user
+            const user_id = req.user.id;
+            ListsService.getUserListsById(req.app.get('db'), user_id)
+            .then(list => {
+                const list_items = list.map(serialList(list))
+                for (const [key, value] of Object.entries(list_items)) {
+                    if (key === "user_id") {
+                        if (value !== user_id) {
+                            return res.status(400).json({
+                                error: {
+                                    message: `You must be the owner of this account to add items to its lists.`
+                                }
+                            })   
+                        }
+                    }
+                }
+                next();
+            })
+            .catch(next);
+
+            const { title, date_added, list_id } = req.body;
+            const newItem = { title, date_added, list_id };
+    
+            for (const [key, value] of Object.entries(newItem))  // Make sure all info is provided
+                if (value === null) 
+                return res.status(400).json({
+                    error: {message: `Missing '${key}' in request body.  Valid list items must contain a list id of an already existing list, the title, and the date of creation`}
+                })
+    
+            ListsService.addListItems(  // Insert the information
+                req.app.get('db'),
+                newItem
+            )
+            .then(item => {  
+                res.status(201)
+                .location(path.posix.join(req.originalUrl, `/${item.id}`))
+                .json(serialItem(item))
+            })
+            .catch(next)
+        });
+    
     module.exports = listsRouter
