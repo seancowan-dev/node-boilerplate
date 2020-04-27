@@ -26,8 +26,8 @@ const ListsService = {
     deleteUserList(knex, id) {
         return knex('user_lists').where({ id }).delete();
     },
-    deleteUserListItem(knex, id, list_id) {
-        return knex('user_lists').where({ id: id, list_id: list_id }).delete();
+    deleteUserListItem(knex, id ) {
+        return knex('list_items').where({ id }).delete();
     },
     updateUserList(knex, id, newList) {
         return knex('user_lists').where({ id }).update(newUser);

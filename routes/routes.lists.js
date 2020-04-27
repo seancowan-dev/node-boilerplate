@@ -35,13 +35,12 @@ listsRouter
     .all(requireAPIKey)
     .all(requireAuth)
     .get((req, res, next) => { // Get list of users
-        const knex = req.app.get('db')
         if (req.user.perm_level !== "admin") {
             return res.status(404).json({
                 error: { message: "You must be an admin in order to view all lists" }
             })
         }
-        ListsService.getAllLists(knex)
+        ListsService.getAllLists(req.app.get('db'))
         .then(lists => {
             res.json(lists.map(serialJoin))  // Return a serialized map of users for the client to parse when needed
         })
@@ -53,9 +52,8 @@ listsRouter
     .all(requireAPIKey)
     .all(requireAuth)
     .get((req, res, next)=> {
-        const knex = req.app.get('db')
         if (req.user.perm_level === "admin" || req.params.id === req.user.id) {
-            ListsService.getUserListsById(knex, req.params.id)
+            ListsService.getUserListsById(req.app.get('db'), req.params.id)
             .then(list => {
                 res.json(list.map(serialJoin))
             })
@@ -111,7 +109,8 @@ listsRouter
             const user_id = req.user.id;
             ListsService.getUserListsById(req.app.get('db'), user_id)
             .then(list => {
-                const list_items = list.map(serialList(list))
+                const list_items = list.map(serialList(list));
+
                 for (const [key, value] of Object.entries(list_items)) {
                     if (key === "user_id") {
                         if (value !== user_id) {
@@ -147,5 +146,38 @@ listsRouter
             })
             .catch(next)
         });
-    
+
+        listsRouter
+        .route('/deleteList/:id')
+            .all(requireAPIKey)
+            .all(requireAuth)
+            .all((req, res, next) => {  // Delete a user list
+                ListsService.getUserListsById(req.app.get('db'), req.user.id)
+                .then(list => {
+                    if (req.user.perm_level === "admin") { // Do not bother checking if list_id is in the found list
+                        next();
+                    } else {
+                        for (const [key, value] of Object.entries(list)) {
+                            if (key === "list_id") {
+                                if (value !== req.params.id) {
+                                    return res.status(400).json({
+                                        error: {
+                                            message: `You do not own the list you specified.  You must either be an admin or own this list to delete it.`
+                                        }
+                                    })   
+                                }
+                            }
+                        }
+                        next();
+                    }
+                }).catch(next);
+            })
+            .delete((req, res, next) => { 
+                ListsService.deleteUserList(req.app.get('db'), req.params.id)
+                .then(rows => {
+                    res.status(204).end();
+                })
+                .catch(next);
+            });
+
     module.exports = listsRouter
