@@ -14,23 +14,9 @@ const serial = user => ({
     password: xss(user.password),
     email: xss(user.email),
     created_at: xss(user.created_at),
-    modified_at: xss(user.updated_at),
+    updated_at: xss(user.updated_at),
     perm_level: xss(user.perm_level)
 })
-
-usersRouter
-    .route('/info')
-    .all(requireAPIKey)
-    .all(requireAuth)
-    .get((req, res, next) => { // Get list of users
-        const knex = req.app.get('db')
-
-        UsersService.getAllUsers(knex)
-        .then(users => {
-            res.json(users.map(serial))  // Return a serialized map of users for the client to parse when needed
-        })
-        .catch(next)
-    });
 
 usersRouter
     .route('/add')
