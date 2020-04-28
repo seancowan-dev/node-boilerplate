@@ -180,7 +180,7 @@ usersRouter
 
             const sub = dbUser.name
             const payload = { user_id: dbUser.id }
-            res.send({
+            res.status(201).json({
               authToken: LoginAuthService.createJwt(sub, payload),
             })
           })

@@ -3,6 +3,7 @@ const app = require('../src/app');
 const dotenv = require('dotenv');
 dotenv.config();
 const UsersService = require('../services/service.users');
+const AuthService = require('../services/services.login-auth');
 const { makeTestUsers } = require('./users.fixtures');
 
 describe('|Users Routes Test Object|', function() {
@@ -42,7 +43,7 @@ describe('|Users Routes Test Object|', function() {
 
         context(`| Invalid api_key provided |`, () => {
             const expected_res = { error: 'Invalid API key provided' };
-            it(`| Responds: 401 | 'Invalid API key provided' |`, () => {
+            it(`| Responds: 401 | Returns: 'Invalid API key provided' |`, () => {
                 return supertest(app)
                 .post(`/api/users/add?api_key=${invalid_key}`)
                 .send(testUsers.dbUsers[0])
@@ -52,7 +53,7 @@ describe('|Users Routes Test Object|', function() {
 
         context(`| Valid api_key provided |`, () => {
             const expected_date = "Wed Jan 22 2020 21:10:25 GMT-0500 (Eastern Standard Time)";
-            it(`| Responds: 201 | With Serialized User Object |`, () => {
+            it(`| Responds: 201 | Returns: Serialized User Object |`, () => {
                 return supertest(app)
                 .post(`/api/users/add?api_key=${valid_key}`)
                 .send(testUsers.dbUsers[0])
@@ -69,10 +70,90 @@ describe('|Users Routes Test Object|', function() {
             })
         });
     });
-    // describe(`| GET /api/users/login | Test Object|`, () => {
 
+    describe(`| GET /api/users/login | Test Object|`, () => {
+        const key = "f36d54c6-47c9-43de-aa5a-835ae17bdaba";
+        const testUsers = makeTestUsers();
+            
+        beforeEach('Insert test user accounts', () => {
+            return db.into('registered_users').insert(testUsers.dbUsers[0]);
+        });
+
+        const { name, password } = testUsers.validLogins[0]
+        const test_login = {
+            name: name,
+            password: password
+        }
+
+            it(`| Responds: 201 | Returns: Valid JWT |`, () => {
+                    return supertest(app)
+                    .post(`/api/users/login?api_key=${key}`)
+                    .send(test_login)
+                    .expect(201)
+                    .expect(res => {
+                        expect(AuthService.verifyJwt(res.body.authToken))
+                    })
+            })
+        });
+
+        context(`| User Has Invalid Credentials`, () => {
+            const key = "f36d54c6-47c9-43de-aa5a-835ae17bdaba";
+            const testUsers = makeTestUsers();
+
+            beforeEach('Insert test user accounts', () => {
+                return db.into('registered_users').insert(testUsers.dbUsers[0]);
+            });
+
+
+            context(`| Bad Password Supplied by User |`, () => {
+                it(`| Responds: 400 | Returns: 'Incorrect password has been entered.'`, () => {
+                    const expected = "Incorrect password has been entered.";
+
+                    const { name, password } = testUsers.invalidPasswords[0]
+    
+                    const bad_password = {
+                        name: name,
+                        password: password
+                    }
+    
+                        return supertest(app)
+                        .post(`/api/users/login?api_key=${key}`)
+                        .send(bad_password)
+                        .expect(400)
+                        .expect(res => {
+                            expect(res.body.error).to.eql(expected)
+                        })
+                })
+            });
+
+            context(`| Bad Username Supplied by User |`, () => {
+                it(`| Responds: 400 | Returns: 'Incorrect user name has been entered.'`, () => {
+                    const expected = "Incorrect user name has been entered.";
+
+                    const { name, password } = testUsers.invalidUsernames[0]
+    
+                    const bad_password = {
+                        name: name,
+                        password: password
+                    }
+    
+                        return supertest(app)
+                        .post(`/api/users/login?api_key=${key}`)
+                        .send(bad_password)
+                        .expect(400)
+                        .expect(res => {
+                            expect(res.body.error).to.eql(expected)
+                        })
+                })
+            });
+        });        
+    });    
+    // describe(`| GET /api/users/login | Test Object|`, () => {
+        // const bad_username = {
+        //     name: name,
+        //     password: password
+        // }
     //     context(`| User Has Valid Credentials`, () => {
     //         it(`Responds with `)
     //     });
     // });
-});
