@@ -7,7 +7,12 @@ const AuthService = require('../services/services.login-auth');
 const { makeTestUsers } = require('./users.fixtures');
 
 describe('|Users Routes Test Object|', function() {
+    // Prepare Necessary Constants and Variables //
     let db;
+    const test_users = makeTestUsers();
+    const valid_key = "f36d54c6-47c9-43de-aa5a-835ae17bdaba";
+    const invalid_key = "f36d54c6-47c9-43de-aa5a-835ae17bdabadaddfadfdsf";
+
     // Instantiate Knex Object //
     before('make knex instance', () => {
         db = knex(
@@ -26,10 +31,7 @@ describe('|Users Routes Test Object|', function() {
 
     // Begin Assertions //
 
-    describe(`| POST /api/users/add | Test Object|`, () => {
-        const testUsers = makeTestUsers();
-        const valid_key = "f36d54c6-47c9-43de-aa5a-835ae17bdaba";
-        const invalid_key = "f36d54c6-47c9-43de-aa5a-835ae17bdabadaddfadfdsf";
+    describe(`| POST /api/users/add | Test Object |`, () => {
 
         const serial = user => ({
             id: xss(user.id),
@@ -46,7 +48,7 @@ describe('|Users Routes Test Object|', function() {
             it(`| Responds: 401 | Returns: 'Invalid API key provided' |`, () => {
                 return supertest(app)
                 .post(`/api/users/add?api_key=${invalid_key}`)
-                .send(testUsers.dbUsers[0])
+                .send(test_users.dbUsers[0])
                 .expect(401, expected_res)
             })
         });
@@ -56,14 +58,14 @@ describe('|Users Routes Test Object|', function() {
             it(`| Responds: 201 | Returns: Serialized User Object |`, () => {
                 return supertest(app)
                 .post(`/api/users/add?api_key=${valid_key}`)
-                .send(testUsers.dbUsers[0])
+                .send(test_users.dbUsers[0])
                 .expect(201)
                 .expect(res => {
-                    expect(res.body.name).to.eql(testUsers.dbUsers[0].name);
-                    expect(res.body.email).to.eql(testUsers.dbUsers[0].email);
-                    expect(res.body.password).to.eql(testUsers.dbUsers[0].password);
+                    expect(res.body.name).to.eql(test_users.dbUsers[0].name);
+                    expect(res.body.email).to.eql(test_users.dbUsers[0].email);
+                    expect(res.body.password).to.eql(test_users.dbUsers[0].password);
                     expect(res.body.created_at).to.eql(expected_date);
-                    expect(res.body.perm_level).to.eql(testUsers.dbUsers[0].perm_level);
+                    expect(res.body.perm_level).to.eql(test_users.dbUsers[0].perm_level);
                     expect(res.body).to.have.property('id');
                     expect(res.body).to.have.property('updated_at');
                 })
@@ -71,37 +73,35 @@ describe('|Users Routes Test Object|', function() {
         });
     });
 
-    describe(`| GET /api/users/login | Test Object|`, () => {
-        const key = "f36d54c6-47c9-43de-aa5a-835ae17bdaba";
-        const testUsers = makeTestUsers();
-            
-        beforeEach('Insert test user accounts', () => {
-            return db.into('registered_users').insert(testUsers.dbUsers[0]);
-        });
+    describe(`| GET /api/users/login | Test Object |`, () => {
 
-        const { name, password } = testUsers.validLogins[0]
-        const test_login = {
-            name: name,
-            password: password
-        }
+        context(`| User Has Valid Credentials |`, () => {
+            
+            beforeEach('Insert test user accounts', () => {
+                return db.into('registered_users').insert(test_users.dbUsers[0]);
+            });
+
+            const { name, password } = test_users.validLogins[0]
+            const test_login = {
+                name: name,
+                password: password
+            }
 
             it(`| Responds: 201 | Returns: Valid JWT |`, () => {
                     return supertest(app)
-                    .post(`/api/users/login?api_key=${key}`)
+                    .post(`/api/users/login?api_key=${valid_key}`)
                     .send(test_login)
                     .expect(201)
                     .expect(res => {
-                        expect(AuthService.verifyJwt(res.body.authToken))
+                            expect(AuthService.verifyJwt(res.body.authToken))
                     })
             })
         });
 
-        context(`| User Has Invalid Credentials`, () => {
-            const key = "f36d54c6-47c9-43de-aa5a-835ae17bdaba";
-            const testUsers = makeTestUsers();
+        context(`| User Has Invalid Credentials |`, () => {
 
             beforeEach('Insert test user accounts', () => {
-                return db.into('registered_users').insert(testUsers.dbUsers[0]);
+                return db.into('registered_users').insert(test_users.dbUsers[0]);
             });
 
 
@@ -109,7 +109,7 @@ describe('|Users Routes Test Object|', function() {
                 it(`| Responds: 400 | Returns: 'Incorrect password has been entered.'`, () => {
                     const expected = "Incorrect password has been entered.";
 
-                    const { name, password } = testUsers.invalidPasswords[0]
+                    const { name, password } = test_users.invalidPasswords[0]
     
                     const bad_password = {
                         name: name,
@@ -117,7 +117,7 @@ describe('|Users Routes Test Object|', function() {
                     }
     
                         return supertest(app)
-                        .post(`/api/users/login?api_key=${key}`)
+                        .post(`/api/users/login?api_key=${valid_key}`)
                         .send(bad_password)
                         .expect(400)
                         .expect(res => {
@@ -130,24 +130,33 @@ describe('|Users Routes Test Object|', function() {
                 it(`| Responds: 400 | Returns: 'Incorrect user name has been entered.'`, () => {
                     const expected = "Incorrect user name has been entered.";
 
-                    const { name, password } = testUsers.invalidUsernames[0]
+                    const { name, password } = test_users.invalidUsernames[0]
     
-                    const bad_password = {
+                    const bad_username = {
                         name: name,
                         password: password
                     }
     
                         return supertest(app)
-                        .post(`/api/users/login?api_key=${key}`)
-                        .send(bad_password)
+                        .post(`/api/users/login?api_key=${valid_key}`)
+                        .send(bad_username)
                         .expect(400)
                         .expect(res => {
                             expect(res.body.error).to.eql(expected)
                         })
                 })
             });
+        });
+
+        describe(`| GET /api/users/info/:id | Test Object |`, () => {
+                context(`| User Has Valid Credentials`, () => {
+                    it(`Responds with `)
+                });
         });        
-    });    
+    });  
+
+
+
     // describe(`| GET /api/users/login | Test Object|`, () => {
         // const bad_username = {
         //     name: name,
@@ -157,3 +166,4 @@ describe('|Users Routes Test Object|', function() {
     //         it(`Responds with `)
     //     });
     // });
+});
