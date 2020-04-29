@@ -59,6 +59,11 @@ usersRouter
                     error: { message: `Could not find user with id: ${req.params.id}` }
                 })
             }
+            if (user.perm_level === "admin" || user.id !== req.params.id) {
+                return res.status(404).json({
+                    error: { message: `You must either be an admin or the owner of this account to view info about it.` }
+                })               
+            }
             res.status(200).json(serial(user));
         })
         .catch(next);
@@ -157,7 +162,7 @@ usersRouter
     
     for (const [key, value] of Object.entries(loginUser))
       if (value == null)
-        return res.status(400).json({
+        return res.status(401).json({
           error: `Missing '${key}' in request body`
         })
 
@@ -167,14 +172,14 @@ usersRouter
     )
       .then(dbUser => {
         if (!dbUser)
-          return res.status(400).json({
+          return res.status(401).json({
             error: 'Incorrect user name has been entered.',
           })
 
         return LoginAuthService.comparePasswords(loginUser.password, dbUser.password)
           .then(compareMatch => {
             if (!compareMatch)
-              return res.status(400).json({
+              return res.status(401).json({
                 error: 'Incorrect password has been entered.',
               })
 

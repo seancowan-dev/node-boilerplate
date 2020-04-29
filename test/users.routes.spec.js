@@ -12,6 +12,7 @@ describe('|Users Routes Test Object|', function() {
     const test_users = makeTestUsers();
     const valid_key = "f36d54c6-47c9-43de-aa5a-835ae17bdaba";
     const invalid_key = "f36d54c6-47c9-43de-aa5a-835ae17bdabadaddfadfdsf";
+    const expected_date = "Wed Jan 22 2020 21:10:25 GMT-0500 (Eastern Standard Time)";
 
     // Instantiate Knex Object //
     before('make knex instance', () => {
@@ -54,7 +55,7 @@ describe('|Users Routes Test Object|', function() {
         });
 
         context(`| Valid api_key provided |`, () => {
-            const expected_date = "Wed Jan 22 2020 21:10:25 GMT-0500 (Eastern Standard Time)";
+
             it(`| Responds: 201 | Returns: Serialized User Object |`, () => {
                 return supertest(app)
                 .post(`/api/users/add?api_key=${valid_key}`)
@@ -106,7 +107,8 @@ describe('|Users Routes Test Object|', function() {
 
 
             context(`| Bad Password Supplied by User |`, () => {
-                it(`| Responds: 400 | Returns: 'Incorrect password has been entered.'`, () => {
+
+                it(`| Responds: 401 | Returns: 'Incorrect password has been entered.'`, () => {
                     const expected = "Incorrect password has been entered.";
 
                     const { name, password } = test_users.invalidPasswords[0]
@@ -119,7 +121,7 @@ describe('|Users Routes Test Object|', function() {
                         return supertest(app)
                         .post(`/api/users/login?api_key=${valid_key}`)
                         .send(bad_password)
-                        .expect(400)
+                        .expect(401)
                         .expect(res => {
                             expect(res.body.error).to.eql(expected)
                         })
@@ -127,7 +129,7 @@ describe('|Users Routes Test Object|', function() {
             });
 
             context(`| Bad Username Supplied by User |`, () => {
-                it(`| Responds: 400 | Returns: 'Incorrect user name has been entered.'`, () => {
+                it(`| Responds: 401 | Returns: 'Incorrect user name has been entered.'`, () => {
                     const expected = "Incorrect user name has been entered.";
 
                     const { name, password } = test_users.invalidUsernames[0]
@@ -140,30 +142,12 @@ describe('|Users Routes Test Object|', function() {
                         return supertest(app)
                         .post(`/api/users/login?api_key=${valid_key}`)
                         .send(bad_username)
-                        .expect(400)
+                        .expect(401)
                         .expect(res => {
                             expect(res.body.error).to.eql(expected)
                         })
                 })
             });
-        });
-
-        describe(`| GET /api/users/info/:id | Test Object |`, () => {
-                context(`| User Has Valid Credentials`, () => {
-                    it(`Responds with `)
-                });
-        });        
+        });      
     });  
-
-
-
-    // describe(`| GET /api/users/login | Test Object|`, () => {
-        // const bad_username = {
-        //     name: name,
-        //     password: password
-        // }
-    //     context(`| User Has Valid Credentials`, () => {
-    //         it(`Responds with `)
-    //     });
-    // });
 });
