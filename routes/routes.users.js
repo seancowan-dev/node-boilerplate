@@ -126,7 +126,7 @@ usersRouter
         const { name, password, email } = req.body;
         const updateUser = { name, password, email };
         if (req.user.perm_level === "admin" || updateUser.name === req.user.name) {
-            const numOfVals = Object.values(updateUser).filter(Boolean).length;  // Make sure request had all info
+            const numOfVals = Object.values(updateUser).filter(Boolean).length;  // Make sure request has all info
             if(numOfVals === 0) {
                 return res.status(400).json({
                     error: {

@@ -69,7 +69,16 @@ commentsRouter
     .post(bodyParser, (req, res, next) => {
         const { id, user_id, reply, movie_id, replying_comment, comment, updated_at } = req.body;
         const newComment = { id, user_id, reply, comment, updated_at };
-
+        const requiredVals = { user_id, reply, comment, updated_at, movie_id}
+        // Ensure essential vals are present
+        const numOfVals = Object.values(newComment).filter(Boolean).length;  // Make sure request has all info
+        if(numOfVals === 0) {
+            return res.status(400).json({
+                error: {
+                    message: `Missing required comment information, all comments must have user_id, reply, comment, updated_at and movie_id `
+                }
+            })
+        }
         // Only users can post comments under their name
         if (user_id !== req.user.id) {
             return res.status(400).json({
@@ -100,6 +109,65 @@ commentsRouter
             res.status(201)
             .location(path.posix.join(req.originalUrl, `/${comment.id}`))
             .json(serial(comment))
+        })
+        .catch(next)
+    });
+
+
+commentsRouter
+    .route('/delete/:id')
+    .all(requireAuth)
+    .all(requireAuth)
+    .delete(bodyParser, (req, res, next) => {
+        // Only comment owners or admins can delete
+        if (req.user.perm_level === "admin" || user_id === req.user.id) {
+           CommentsService.deleteCommentById(req.app.get('db'), req.params.id)
+           .then(rows => {
+                res.status(204).end()
+            })
+            .catch(next);           
+        } else {
+            return res.status(400).json({
+                error: { message: `You must be the owner of this comment or an admin to delete it.`}
+            }) 
+        }
+    });
+
+commentsRouter
+    .route('/update/:id')
+    .all(requireAuth)
+    .all(requireAuth)
+    .patch(bodyParser, (req, res, next) => {
+        const { id, user_id, reply, movie_id, replying_comment, comment, updated_at } = req.body;
+        const newComment = { id, user_id, reply, comment, updated_at };
+
+        // Only users can post comments under their name
+        if (user_id !== req.user.id) {
+            return res.status(400).json({
+                error: { message: `Cannot post comments under a different user's ID`}
+            })            
+        }
+
+        // Comment can have both, but *must* a movie_id 
+        // and if they have reply === true must have a replying_comment id
+        if (movie_id === undefined) {
+            return res.status(400).json({
+                error: { message: `Movie ID cannot be empty when posting a comment.`}
+            })
+        }
+        newComment.movie_id = movie_id;
+        if (reply === true) {
+            if (replying_comment === undefined) {
+                return res.status(400).json({
+                    error: { message: `A reply cannot be posted without a corresponding comment ID to reply to.`}
+                })
+            }
+            newComment.replying_comment = replying_comment;
+        }
+
+        CommentsService.updateCommentById(req.app.get('db'), req.params.id, newComment)
+        .then(rows => {
+            res.status(204).end()
         })
         .catch(next)
     });
