@@ -64,26 +64,44 @@ commentsRouter
 
 commentsRouter
     .route('/add')
-    // .all(requireAuth)
-    // .get(bodyParser, (req, res, next => {
-    //     const { id, user_id, reply, movie_id, replying_comment, comment, updated_at } = req.body;
-    //     const newComment = { id, user_id, reply, comment, updated_at };
+    .all(requireAuth)
+    .all(requireAuth)
+    .post(bodyParser, (req, res, next) => {
+        const { id, user_id, reply, movie_id, replying_comment, comment, updated_at } = req.body;
+        const newComment = { id, user_id, reply, comment, updated_at };
 
-    //     // Comment can have both, but *must* a movie_id 
-    //     // and if they have reply === true must have a replying_comment id
+        // Only users can post comments under their name
+        if (user_id !== req.user.id) {
+            return res.status(400).json({
+                error: { message: `Cannot post comments under a different user's ID`}
+            })            
+        }
 
-    //     if (movie_id === undefined) {
-    //         return res.status(400).json({
-    //             error: { message: `Movie ID cannot be empty when posting a comment.`}
-    //         })
-    //     }
-    //     if (reply === true) {
-    //         if (replying_comment === undefined) {
-    //             return res.status(400).json({
-    //                 error: { message: `A reply cannot be posted without a corresponding comment ID to reply to.`}
-    //             })
-    //         }
-    //     }
-    // }))
+        // Comment can have both, but *must* a movie_id 
+        // and if they have reply === true must have a replying_comment id
+
+        if (movie_id === undefined) {
+            return res.status(400).json({
+                error: { message: `Movie ID cannot be empty when posting a comment.`}
+            })
+        }
+        newComment.movie_id = movie_id;
+        if (reply === true) {
+            if (replying_comment === undefined) {
+                return res.status(400).json({
+                    error: { message: `A reply cannot be posted without a corresponding comment ID to reply to.`}
+                })
+            }
+            newComment.replying_comment = replying_comment;
+        }
+
+        CommentsService.addComment(req.app.get('db'), newComment)
+        .then(comment => {
+            res.status(201)
+            .location(path.posix.join(req.originalUrl, `/${comment.id}`))
+            .json(serial(comment))
+        })
+        .catch(next)
+    });
 
     module.exports = commentsRouter;
