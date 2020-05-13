@@ -94,8 +94,24 @@ describe('|Users Routes Test Object|', function() {
                     .send(test_login)
                     .expect(201)
                     .expect(res => {
-                            expect(AuthService.verifyJwt(res.body.authToken))
+                            let token = res.body.authToken;
+                            expect(AuthService.verifyJwt(token))
+                            return supertest(app)
+                            .post(`/api/users/add?api_key=${valid_key}`)
+                            .send(test_users.dbUsers[0])
+                            .expect(201)
+                            .expect(res => {
+                                expect(res.body.name).to.eql(test_users.dbUsers[0].name);
+                                expect(res.body.email).to.eql(test_users.dbUsers[0].email);
+                                expect(res.body.password).to.eql(test_users.dbUsers[0].password);
+                                expect(res.body.created_at).to.eql(expected_date);
+                                expect(res.body.perm_level).to.eql(test_users.dbUsers[0].perm_level);
+                                expect(res.body).to.have.property('id');
+                                expect(res.body).to.have.property('updated_at');
+                            })
                     })
+                   
+
             })
         });
 

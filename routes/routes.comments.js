@@ -10,12 +10,12 @@ const bodyParser = express.json()
 const serial = comment => ({
     id: xss(comment.id),
     user_id: xss(comment.user_id),
-    reply: xss(comment.reply),
     movie_id: xss(comment.movie_id),
-    replying_comment: xss(comment.replying_comment),
+    replying_to: xss(comment.replying_to),
     comment: xss(comment.comment),
     updated_at: xss(comment.updated_at)
 });
+
 commentsRouter
     .route('/get/:id') // Get single comments by comment ID
     .all(requireAPIKey)
@@ -31,6 +31,23 @@ commentsRouter
         })
         .catch(next);
     });
+
+commentsRouter
+    .route('/reply/get/:id') // Get single replies by ID
+    .all(requireAPIKey)
+    .get((req, res, next) => {
+        CommentsService.getReplyById(req.app.get('db'), req.params.id)
+        .then(comment => {
+            if (!comment) {
+                return res.status(404).json({
+                    error: { message: `Could not find comment with id: ${req.params.id}.  Perhaps it was deleted?` }
+                })                
+            }
+            res.status(200).json(serial(comment));
+        })
+        .catch(next);
+    });
+
 commentsRouter
     .route('/get/movie/:id') // Get comments by movie ID
     .all(requireAPIKey)
@@ -42,13 +59,16 @@ commentsRouter
                     error: { message: `Could not find comments with movie id: ${req.params.id}.` }
                 })                
             }
-            res.status(200).json(comments.map(serial));
+            res.status(200).send(comments.rows);
         })
         .catch(next);
     });
+
+
 commentsRouter
     .route('/get/user/:id') // Get comments by user ID
     .all(requireAPIKey)
+    .all(requireAuth)
     .get((req, res, next) => {
         CommentsService.getCommentByUser(req.app.get('db'), req.params.id)
         .then(comments => {
@@ -62,20 +82,25 @@ commentsRouter
         .catch(next);
     });
 
+
 commentsRouter
     .route('/add')
-    .all(requireAuth)
+    .all(requireAPIKey)
     .all(requireAuth)
     .post(bodyParser, (req, res, next) => {
-        const { id, user_id, reply, movie_id, replying_comment, comment, updated_at } = req.body;
-        const newComment = { id, user_id, reply, comment, updated_at };
-        const requiredVals = { user_id, reply, comment, updated_at, movie_id}
+        const { user_name, user_id, reply, movie_id, replying_to, comment, updated_at } = req.body;
+        const newComment = { user_name, user_id, comment, updated_at };
+        const requiredVals = { user_name, user_id, reply, comment, updated_at }
+
+        //Note the reply field must be supplied by JSON to the endpoint, however this is not stored in the database
+        //It is purely to make things easier on the client side when  handling post buttons for comments
+
         // Ensure essential vals are present
-        const numOfVals = Object.values(newComment).filter(Boolean).length;  // Make sure request has all info
+        const numOfVals = Object.values(requiredVals).filter(Boolean).length;  // Make sure request has all info
         if(numOfVals === 0) {
             return res.status(400).json({
                 error: {
-                    message: `Missing required comment information, all comments must have user_id, reply, comment, updated_at and movie_id `
+                    message: `Missing required comment information, please check that you have provided a user_name, a boolean value for whether this is a reply or not, the comment, and a timestamptz of the update.`
                 }
             })
         }
@@ -86,7 +111,7 @@ commentsRouter
             })            
         }
 
-        // Comment can have both, but *must* a movie_id 
+        // Comment can have both, but *must* have a movie_id 
         // and if they have reply === true must have a replying_comment id
 
         if (movie_id === undefined) {
@@ -95,28 +120,37 @@ commentsRouter
             })
         }
         newComment.movie_id = movie_id;
-        if (reply === true) {
-            if (replying_comment === undefined) {
+        if (reply === "true") {
+            if (replying_to === undefined) {
                 return res.status(400).json({
                     error: { message: `A reply cannot be posted without a corresponding comment ID to reply to.`}
                 })
             }
-            newComment.replying_comment = replying_comment;
+            newComment.replying_to = replying_to;
+            CommentsService.addReply(req.app.get('db'), newComment)
+            .then(comment => {
+                res.status(201)
+                .location(path.posix.join(req.originalUrl, `/${comment.id}`))
+                .json(serial(comment))
+            })
+            .catch(next)
         }
 
-        CommentsService.addComment(req.app.get('db'), newComment)
-        .then(comment => {
-            res.status(201)
-            .location(path.posix.join(req.originalUrl, `/${comment.id}`))
-            .json(serial(comment))
-        })
-        .catch(next)
+        if (reply === "false") {
+            CommentsService.addComment(req.app.get('db'), newComment)
+            .then(comment => {
+                res.status(201)
+                .location(path.posix.join(req.originalUrl, `/${comment.id}`))
+                .json(serial(comment))
+            })
+            .catch(next)
+        }
     });
 
 
 commentsRouter
     .route('/delete/:id')
-    .all(requireAuth)
+    .all(requireAPIKey)
     .all(requireAuth)
     .delete(bodyParser, (req, res, next) => {
         // Only comment owners or admins can delete
@@ -133,13 +167,14 @@ commentsRouter
         }
     });
 
+
 commentsRouter
     .route('/update/:id')
-    .all(requireAuth)
+    .all(requireAPIKey)
     .all(requireAuth)
     .patch(bodyParser, (req, res, next) => {
-        const { id, user_id, reply, movie_id, replying_comment, comment, updated_at } = req.body;
-        const newComment = { id, user_id, reply, comment, updated_at };
+        const { user_id, reply, movie_id, replying_to, comment, updated_at } = req.body;
+        const newComment = { user_id, comment, updated_at };
 
         // Only users can post comments under their name
         if (user_id !== req.user.id) {
@@ -149,27 +184,33 @@ commentsRouter
         }
 
         // Comment can have both, but *must* a movie_id 
-        // and if they have reply === true must have a replying_comment id
+        // and if they have reply === true must have a replying_to id
         if (movie_id === undefined) {
             return res.status(400).json({
                 error: { message: `Movie ID cannot be empty when posting a comment.`}
             })
         }
         newComment.movie_id = movie_id;
-        if (reply === true) {
-            if (replying_comment === undefined) {
+        if (reply === "true") {
+            if (replying_to === undefined) {
                 return res.status(400).json({
                     error: { message: `A reply cannot be posted without a corresponding comment ID to reply to.`}
                 })
             }
-            newComment.replying_comment = replying_comment;
+            newComment.replying_to = replying_to;
+            CommentsService.updateReplyById(req.app.get('db'), req.params.id, newComment)
+            .then(rows => {
+                res.status(204).json({ message: "Reply update successful"})
+            })
+            .catch(next)
         }
-
-        CommentsService.updateCommentById(req.app.get('db'), req.params.id, newComment)
-        .then(rows => {
-            res.status(204).end()
-        })
-        .catch(next)
-    });
+        if (reply === "false") {
+            CommentsService.updateCommentById(req.app.get('db'), req.params.id, newComment)
+            .then(rows => {
+                res.status(204).send({ message: "Comment update successful"})
+            })
+            .catch(next)
+        }
+    });  
 
     module.exports = commentsRouter;
