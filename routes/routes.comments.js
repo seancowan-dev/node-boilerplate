@@ -157,7 +157,7 @@ commentsRouter
         if (req.user.perm_level === "admin" || user_id === req.user.id) {
            CommentsService.deleteCommentById(req.app.get('db'), req.params.id)
            .then(rows => {
-                res.status(204).end()
+                res.status(204).json({ message: "Delete comment successful"})
             })
             .catch(next);           
         } else {
@@ -167,6 +167,24 @@ commentsRouter
         }
     });
 
+    commentsRouter
+    .route('/delete/reply/:id')
+    .all(requireAPIKey)
+    .all(requireAuth)
+    .delete(bodyParser, (req, res, next) => {
+        // Only comment owners or admins can delete
+        if (req.user.perm_level === "admin" || user_id === req.user.id) {
+           CommentsService.deleteReplyById(req.app.get('db'), req.params.id)
+           .then(rows => {
+                res.status(204).json({ message: "Delete reply successful"})
+            })
+            .catch(next);           
+        } else {
+            return res.status(400).json({
+                error: { message: `You must be the owner of this comment or an admin to delete it.`}
+            }) 
+        }
+    });
 
 commentsRouter
     .route('/update/:id')
@@ -207,7 +225,7 @@ commentsRouter
         if (reply === "false") {
             CommentsService.updateCommentById(req.app.get('db'), req.params.id, newComment)
             .then(rows => {
-                res.status(204).send({ message: "Comment update successful"})
+                res.status(204).json({ message: "Comment update successful"})
             })
             .catch(next)
         }

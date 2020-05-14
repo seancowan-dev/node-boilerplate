@@ -37,6 +37,9 @@ const CommentsService = {
     deleteCommentById(knex, id) {
         return knex('user_comments').where({ id }).delete();
     },
+    deleteReplyById(knex, id) {
+        return knex('reply_comments').where({ id }).delete();
+    },
     updateCommentById(knex, id, newComment) {
         return knex('user_comments').where({ id }).update(newComment);
     },
