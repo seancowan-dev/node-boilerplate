@@ -8,6 +8,9 @@ const UsersService = {
             return rows[0]
         });
     },
+    getAll(knex) {
+        return knex.from('registered_users').select('*');
+    },
     getUserById(knex, id) {
         return knex.from('registered_users').select('*').where('id', id).first();
     },

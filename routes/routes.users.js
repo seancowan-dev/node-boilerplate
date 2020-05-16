@@ -45,6 +45,21 @@ usersRouter
     });
 
 usersRouter
+    .route('/getAllUsers') // Get all users for admins
+    .all(requireAPIKey)
+    .all(requireAuth)
+    .get((req, res, next) => {
+        UsersService.getAll(req.app.get('db'), req.user.id).then(users => {
+            if (req.user.perm_level !== "admin") {
+                return res.status(400).json({
+                    error: { message: 'You must be an admin to access this endpoint.'}
+                })
+            }
+            res.status(200).json(users.map(serial));
+        }).catch(next);
+    });
+
+usersRouter
     .route('/info/:id')  // Find user information by ID
     .all(requireAPIKey)
     .all(requireAuth)
@@ -76,6 +91,11 @@ usersRouter
         if (req.user.perm_level !== "admin") {
             return res.status(404).json({
                 error: { message: `You must be an admin in order to delete users. Your level is '${req.user.perm_level}'`}
+            })
+        }
+        if (req.user.id === req.params.id) {
+            return res.status(404).json({
+                error: { message: `You cannot delete your own account!`}
             })
         }
         UsersService.getUserById(

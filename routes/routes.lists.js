@@ -72,7 +72,7 @@ listsRouter
     .all(requireAPIKey)
     .all(requireAuth)
     .post(bodyParser, (req, res, next) => {  // Add a new user
-        const { list_name, user_id } = req.body;
+        const { list_name, user_id, date_added } = req.body;
         const newList = { list_name, user_id };
 
         if (newList.user_id !== req.user.id) {
@@ -109,7 +109,7 @@ listsRouter
             const user_id = req.user.id;
             ListsService.getUserListsById(req.app.get('db'), user_id)
             .then(list => {
-                const list_items = list.map(serialJoin);
+                const list_items = list.rows.map(serialJoin);
                 for (const [key, value] of Object.entries(list_items)) {
                     if (key === "user_id") {
                         if (value !== user_id) {
@@ -184,27 +184,27 @@ listsRouter
         .route('/deleteListItem/:id')
             .all(requireAPIKey)
             .all(requireAuth)
-            // .all((req, res, next) => {  // Delete a user list
-            //     ListsService.getUserListsById(req.app.get('db'), req.user.id)
-            //     .then(list => {
-            //         if (req.user.perm_level === "admin") { // Do not bother checking if list_id is in the found list
-            //             next();
-            //         } else {
-            //             for (const [key, value] of Object.entries(list)) {
-            //                 if (key === "list_id") {
-            //                     if (value !== req.params.id) {
-            //                         return res.status(400).json({
-            //                             error: {
-            //                                 message: `This item belongs to a list not owned by you. You must either be an admin or own this list item to delete it.`
-            //                             }
-            //                         })   
-            //                     }
-            //                 }
-            //             }
-            //             next();
-            //         }
-            //     }).catch(next);
-            // })
+            .all((req, res, next) => {  // Delete a user list
+                ListsService.getUserListsById(req.app.get('db'), req.user.id)
+                .then(list => {
+                    if (req.user.perm_level === "admin") { // Do not bother checking if list_id is in the found list
+                        next();
+                    } else {
+                        for (const [key, value] of Object.entries(list)) {
+                            if (key === "item_id") {
+                                if (value !== req.params.id) {
+                                    return res.status(400).json({
+                                        error: {
+                                            message: `This item belongs to a list not owned by you. You must either be an admin or own this list item to delete it.`
+                                        }
+                                    })   
+                                }
+                            }
+                        }
+                        next();
+                    }
+                }).catch(next);
+            })
             .delete((req, res, next) => { 
                 ListsService.deleteUserListItem(req.app.get('db'), req.params.id)
                 .then(rows => {
