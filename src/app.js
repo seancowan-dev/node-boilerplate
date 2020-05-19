@@ -18,7 +18,7 @@ const morganOption = (NODE_ENV === 'production')
 const morganSetting = process.env.NODE_ENV === 'production' ? 'tiny' : 'common'
 app.use(morgan(morganSetting))
 app.use(helmet());
-app.options('*', cors());
+// app.options('*', cors());
 app.use(cors({
     origin: CLIENT_ORIGIN
 }));
