@@ -20,7 +20,7 @@ app.use(morgan(morganSetting))
 app.use(helmet());
 // app.options('*', cors());
 app.use(cors({
-    origin: CLIENT_ORIGIN
+    origin: "*"
 }));
 
 app.use('/api/users', usersRouter);
