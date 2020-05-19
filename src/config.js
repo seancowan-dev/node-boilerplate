@@ -1,6 +1,7 @@
 module.exports = {
     PORT: process.env.PORT || 8000,
     NODE_ENV: process.env.NODE_ENV || "development",
+    CLIENT_ORIGIN: "https://findthatmovie-client.now.sh/",
     // CLIENT_AUTH_SECRET: process.env.API_CLIENT_SECRET,
     // API_CLIENT_KEY: process.env.API_CLIENT_KEY,
     // API_CLIENT_HASH: process.env.API_CLIENT_HASH,
