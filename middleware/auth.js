@@ -12,7 +12,7 @@ function requireAPIKey(req, res, next) {
     const authToken = AuthService.createJwt(api_key, {"user_hash": bcrypt.hashSync(api_key, 8)})
     const payload = AuthService.verifyJwt(authToken);
     try {
-      if (AuthService.compare(payload.sub, process.env.API_CLIENT_HASH)=== false) {
+      if (AuthService.compare(payload.sub, process.env.API_CLIENT_HASH) === false) {
         res.status(401).json({ error: 'Invalid API key provided' })
       }
       next();
