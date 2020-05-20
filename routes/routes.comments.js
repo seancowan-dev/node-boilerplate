@@ -218,14 +218,16 @@ commentsRouter
             newComment.replying_to = replying_to;
             CommentsService.updateReplyById(req.app.get('db'), req.params.id, newComment)
             .then(rows => {
-                res.status(204).json({ message: "Reply update successful"})
+                return res.status(201).location(path.posix.join(req.originalUrl, `/${req.params.id}`))
+                .json(newComment);
             })
             .catch(next)
         }
         if (reply === "false") {
             CommentsService.updateCommentById(req.app.get('db'), req.params.id, newComment)
             .then(rows => {
-                res.status(204).json({ message: "Comment update successful"})
+                return res.status(201).location(path.posix.join(req.originalUrl, `/${req.params.id}`))
+                .json(newComment);
             })
             .catch(next)
         }
