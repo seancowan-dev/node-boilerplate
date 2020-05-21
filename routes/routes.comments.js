@@ -149,7 +149,7 @@ commentsRouter
     .all(requireAPIKey)
     .all(requireAuth)
     .delete(bodyParser, (req, res, next) => {
-        // Only comment owners or admins can delete
+        // Only comment owners or admins can delete, check if the user owns this comment or is an admin
         CommentsService.getCommentById(req.app.get('db'), req.params.id).then(response => {
             if (req.user.perm_level === "admin" || response.user_id === req.user.id) {
                 CommentsService.deleteCommentById(req.app.get('db'), req.params.id)
@@ -171,18 +171,20 @@ commentsRouter
     .all(requireAPIKey)
     .all(requireAuth)
     .delete(bodyParser, (req, res, next) => {
-        // Only comment owners or admins can delete
-        if (req.user.perm_level === "admin" || user_id === req.user.id) {
-           CommentsService.deleteReplyById(req.app.get('db'), req.params.id)
-           .then(rows => {
-                res.status(204).json({ message: "Delete reply successful"})
-            })
-            .catch(next);           
-        } else {
-            return res.status(400).json({
-                error: { message: `You must be the owner of this comment or an admin to delete it.`}
-            }) 
-        }
+        // Only comment owners or admins can delete, check if the user owns this comment or is an admin
+        CommentsService.getReplyById(req.app.get('db'), req.params.id).then(response => {
+            if (req.user.perm_level === "admin" || response.user_id === req.user.id) {
+                CommentsService.deleteReplyById(req.app.get('db'), req.params.id)
+                .then(rows => {
+                     res.status(204).json({ message: "Delete reply successful"})
+                 })
+                 .catch(next);           
+             } else {
+                 return res.status(400).json({
+                     error: { message: `You must be the owner of this comment or an admin to delete it.`}
+                 }) 
+             }
+        })
     });
 
 commentsRouter
