@@ -22,12 +22,10 @@ commentsRouter
     .get((req, res, next) => {
         CommentsService.getCommentById(req.app.get('db'), req.params.id)
         .then(comment => {
-            if (!comment) {
-                return res.status(404).json({
-                    error: { message: `Could not find comment with id: ${req.params.id}.  Perhaps it was deleted?` }
-                })                
+            if (comment) {
+                res.status(200).json(serial(comment));
             }
-            res.status(200).json(serial(comment));
+            
         })
         .catch(next);
     });
@@ -38,12 +36,13 @@ commentsRouter
     .get((req, res, next) => {
         CommentsService.getReplyById(req.app.get('db'), req.params.id)
         .then(comment => {
-            if (!comment) {
-                return res.status(404).json({
-                    error: { message: `Could not find comment with id: ${req.params.id}.  Perhaps it was deleted?` }
-                })                
+            if (comment) {
+                res.status(200).json(serial(comment));
+                // return res.status(404).json({
+                //     error: { message: `Could not find comment with id: ${req.params.id}.  Perhaps it was deleted?` }
+                // })                
             }
-            res.status(200).json(serial(comment));
+            
         })
         .catch(next);
     });
