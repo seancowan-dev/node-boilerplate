@@ -23,9 +23,7 @@ commentsRouter
         CommentsService.getCommentById(req.app.get('db'), req.params.id)
         .then(comment => {
             if (!comment) {
-                return res.status(404).json({
-                    error: { message: `Could not find comment with id: ${req.params.id}.  Perhaps it was deleted?` }
-                })                
+                return res.end();
             }
             res.status(200).json(serial(comment));
         })
@@ -39,9 +37,7 @@ commentsRouter
         CommentsService.getReplyById(req.app.get('db'), req.params.id)
         .then(comment => {
             if (!comment) {
-                return res.status(404).json({
-                    error: { message: `Could not find comment with id: ${req.params.id}.  Perhaps it was deleted?` }
-                })                
+                return res.end();      
             }
             res.status(200).json(serial(comment));
         })
@@ -154,17 +150,20 @@ commentsRouter
     .all(requireAuth)
     .delete(bodyParser, (req, res, next) => {
         // Only comment owners or admins can delete
-        if (req.user.perm_level === "admin" || user_id === req.user.id) {
-           CommentsService.deleteCommentById(req.app.get('db'), req.params.id)
-           .then(rows => {
-                res.status(204).json({ message: "Delete comment successful"})
-            })
-            .catch(next);           
-        } else {
-            return res.status(400).json({
-                error: { message: `You must be the owner of this comment or an admin to delete it.`}
-            }) 
-        }
+        CommentsService.getCommentById(req.app.get('db'), req.params.id).then(response => {
+            if (req.user.perm_level === "admin" || response.user_id === req.user.id) {
+                CommentsService.deleteCommentById(req.app.get('db'), req.params.id)
+                .then(rows => {
+                     res.status(204).json({ message: "Delete comment successful"})
+                 })
+                 .catch(next);           
+             } else {
+                 return res.status(400).json({
+                     error: { message: `You must be the owner of this comment or an admin to delete it.`}
+                 }) 
+             }
+        })
+
     });
 
     commentsRouter
