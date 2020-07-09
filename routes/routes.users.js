@@ -74,7 +74,7 @@ usersRouter
                     error: { message: `Could not find user with id: ${req.params.id}` }
                 })
             }
-            if ((user.perm_level !== "admin" &&  user.id !== req.params.id) === true) {
+            if ((user.perm_level !== "admin" && user.id !== req.params.id) === true) {
                 return res.status(404).json({
                     error: { message: `You must either be an admin or the owner of this account to view info about it.` }
                 })               
