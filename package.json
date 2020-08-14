@@ -1,11 +1,11 @@
 {
-  "name": "findthatmovie-api",
-  "version": "1.1.0",
-  "description": "",
+  "name": "SCT-Solutions-API",
+  "version": "0.0.1",
+  "description": "API Backend for SCTSolutions.ca",
   "main": "index.js",
   "repository": {
     "type": "git",
-    "url": "https://github.com/seancowan-dev/findthatmovie-api.git"
+    "url": "https://github.com/seancowan-dev/sct-api.git"
   },
   "scripts": {
     "test": "mocha --require test/setup.js",
